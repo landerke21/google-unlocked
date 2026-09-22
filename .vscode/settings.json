@@ -1,0 +1,7 @@
+{
+    "gitlens.graph.layout": "editor",
+    "gitlens.graph.scrollMarkers.additionalTypes": [
+        "localBranches",
+        "pullRequests"
+    ]
+}
