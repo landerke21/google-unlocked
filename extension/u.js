@@ -1,12 +1,29 @@
 $(function () {
-    if (window.location.href.indexOf('//www.google') === -1) {
+    var googleSearchUrlPattern = /^https?:\/\/(?:www\.)?google\.[a-z.]+\//i
+    if (!googleSearchUrlPattern.test(window.location.href)) {
         return
     }
-    $('#search div.g').last().after('<div id="cc"></div>')
+
+    var $search = $('#search')
+    if (!$search.length) {
+        return
+    }
+
+    var $results = $('#search div.g')
+    var $container = $results.last()
+    if ($container.length > 0) {
+        $container.after('<div id="cc"></div>')
+    } else {
+        $search.append('<div id="cc"></div>')
+    }
+
     var s = $('#cc')
 
     $('div i > a').each(function (i, a) {
-        if (a.href === 'https://www.google.com/support/answer/1386831') return;
+        if (!a || !a.href || /google\.com\/support\//.test(a.href)) {
+            return
+        }
+
         setTimeout(function () {
             $.ajax({
                 type: 'GET',
@@ -14,21 +31,29 @@ $(function () {
                 dataType: 'html',
                 success: function (data) {
                     var hm = {}
-                    var links = data.matchAll(/class="infringing_url">([^\s-<]+)\s*-\s*([0-9]+)/g)
+                    var links = (data || '').matchAll(/class="infringing_url">([^<]+?)\s*-\s*([0-9]+)/g)
+
                     for (const i of links) {
-                        if (i[1] in hm) {
+                        var rawDomain = (i[1] || '').trim()
+                        var normalizedDomain = rawDomain.replace(/^https?:\/\//i, '').replace(/\/.*$/, '')
+                        if (!normalizedDomain || normalizedDomain in hm) {
                             continue
                         }
-                        hm[i[1]] = 1
-                        var l = $('#l' + i[2])
+
+                        hm[normalizedDomain] = 1
+                        var count = i[2]
+                        var l = $('#l' + count)
                         if (l.length < 1) {
-                            s.prepend('<div id="l' + i[2] + '" data-num="' + i[2] + '"></div>')
-                            l = $('#l' + i[2])
+                            s.prepend('<div id="l' + count + '" data-num="' + count + '"></div>')
+                            l = $('#l' + count)
                         }
+
+                        var href = /^https?:\/\//i.test(rawDomain) ? rawDomain : 'http://' + normalizedDomain
                         l.append('<div class="g">'
-                            + '<a href="http://' + i[1] + '" target="_blank">' + i[1] + ' (' + i[2] + ' URLs) </a>'
+                            + '<a href="' + href + '" target="_blank">' + normalizedDomain + ' (' + count + ' URLs) </a>'
                             + '</div>')
                     }
+
                     var divs = $('div[data-num]', s)
                     divs.sort(function (a, b) {
                         return b.dataset.num - a.dataset.num
@@ -36,7 +61,7 @@ $(function () {
                     s.html(divs)
                 },
                 error: function (e, err) {
-                    console.log(e, err);
+                    console.log(e, err)
                 },
                 xhr: function () {
                     var xhr = jQuery.ajaxSettings.xhr();
@@ -46,12 +71,9 @@ $(function () {
                         setRequestHeader.call(this, name, value);
                     }
                     return xhr;
-                },
-
-            });
-        }, i * 2000);
+                }
+            })
+        }, i * 2000)
     })
-
-
-});
+})
 

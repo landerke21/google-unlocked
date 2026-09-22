@@ -19,7 +19,8 @@
 /* eslint-env browser, es6, greasemonkey, jquery */
 
 $(function () {
-    if (window.location.href.indexOf('//www.google') === -1) return;
+    const googleSearchUrlPattern = /^https?:\/\/(?:www\.)?google\.[a-z.]+\//i
+    if (!googleSearchUrlPattern.test(window.location.href)) return;
 
     $('#search div.g').last().after(`
     <div id="cc">
@@ -36,7 +37,7 @@ $(function () {
     let firstRun = true
     let totalFetchs = 0
     $('div i > a').each((i, a) => {
-        if (a.href === 'https://www.google.com/support/answer/1386831') return;
+        if (!a || !a.href || /google\.com\/support\//.test(a.href)) return;
 
         totalFetchs++
 
@@ -73,20 +74,23 @@ $(function () {
                         return;
                     }
                     let hm = {}
-                    const links = response.responseText.matchAll(/class="infringing_url">([^\s-<]+)\s*-\s*([0-9]+)/g)
+                    const links = (response.responseText || '').matchAll(/class="infringing_url">([^<]+?)\s*-\s*([0-9]+)/g)
 
-                    for (const i of links) {
-                        if (i[1] in hm) continue;
+                    for (const match of links) {
+                        const rawDomain = (match[1] || '').trim()
+                        const domain = rawDomain.replace(/^https?:\/\//i, '').replace(/\/.*$/, '')
+                        if (!domain || domain in hm) continue;
 
-                        hm[i[1]] = 1
-                        let l = $('#l' + i[2])
+                        hm[domain] = 1
+                        let l = $('#l' + match[2])
                         if (l.length < 1) {
-                            s.prepend(`<div id="l${i[2]}" data-num="${i[2]}"></div>`)
-                            l = $('#l' + i[2])
+                            s.prepend(`<div id="l${match[2]}" data-num="${match[2]}"></div>`)
+                            l = $('#l' + match[2])
                         }
+                        const href = /^https?:\/\//i.test(rawDomain) ? rawDomain : `http://${domain}`
                         l.append(`
                         <div class="g">
-                           <a href="http://${i[1]}" target="_blank">${i[1]} (${i[2]} URLs)</a>
+                           <a href="${href}" target="_blank">${domain} (${match[2]} URLs)</a>
                         </div>
                         `)
                     }
